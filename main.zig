@@ -33,6 +33,7 @@ pub fn setup_signals() void {
 }
 
 const Game = struct {
+    score: f32 = 0,
     queue: *allegro.ALLEGRO_EVENT_QUEUE,
     display: *allegro.ALLEGRO_DISPLAY,
     font: *allegro.ALLEGRO_FONT,
@@ -44,6 +45,8 @@ const Game = struct {
     pub fn new(allocator: *const std.mem.Allocator) *Game {
         print("Creating game object\n", .{});
         var game = allocator.create(Game) catch @panic("Game: can't allocate Game struct");
+
+        game.score = 0.1;
 
         game.queue = allegro.al_create_event_queue() orelse @panic("Allegro: can't create a queue");
 
@@ -107,6 +110,12 @@ const Game = struct {
                         allegro.ALLEGRO_KEY_DOWN => entities.Spaceship.go_back(&self.spaceship),
                         allegro.ALLEGRO_KEY_ESCAPE => stop(0),
                         allegro.ALLEGRO_KEY_SPACE => self.handle_shot(),
+                        allegro.ALLEGRO_KEY_C => {
+                            self.spaceship.color = utils.get_random_color();
+                        },
+                        allegro.ALLEGRO_KEY_P => {
+                            self.score += 1;
+                        },
                         allegro.ALLEGRO_KEY_COMMA => {
                             _ = self.spawn_asteroid(entities.Asteroid{
                                 .position = self.spaceship.position,
@@ -136,7 +145,7 @@ const Game = struct {
         const canvas_height = self.get_display_height();
         const canvas_width_f = @intToFloat(f32, canvas_width);
         const canvas_height_f = @intToFloat(f32, canvas_height);
-        const ticks = @intToFloat(f32, self.timer.lap()) / 10e7;
+        const ticks = @intToFloat(f32, self.timer.lap()) / 10e8;
         var i: u16 = 0;
         while (i < ENTITY_LIST_SIZE) {
             if (self.asteroids[i] != null) {
@@ -155,11 +164,10 @@ const Game = struct {
             }
             i += 1;
         }
-        // TODO: tick everyone
         self.spaceship.position = self.spaceship.position.intervalify(canvas_width_f, canvas_height_f);
+        self.score += ticks;
 
         self.draw();
-        // print("ticks: {}\n", .{ticks});
     }
 
     fn draw(self: *Game) void {
@@ -176,6 +184,26 @@ const Game = struct {
                 entities.Asteroid.draw(&asteroid.?);
             }
         }
+        self.draw_life_text();
+        self.draw_score_text();
+    }
+
+    fn draw_life_text(self: *Game) void {
+        var transform: allegro.ALLEGRO_TRANSFORM = undefined;
+        allegro.al_identity_transform(&transform);
+        allegro.al_use_transform(&transform);
+        const white = allegro.al_map_rgb(255, 255, 255);
+        allegro.al_draw_textf(self.font, white, 10, 10, allegro.ALLEGRO_ALIGN_LEFT, "<3 %i", self.spaceship.health);
+    }
+
+    fn draw_score_text(self: *Game) void {
+        var transform: allegro.ALLEGRO_TRANSFORM = undefined;
+        allegro.al_identity_transform(&transform);
+        allegro.al_use_transform(&transform);
+        const white = allegro.al_map_rgb(255, 255, 255);
+        var buf: [32]u8 = undefined;
+        const scoreTxt = std.fmt.bufPrintZ(&buf, "SCORE: {d:.0}", .{self.score}) catch @panic("Game: can't alloc memory for score text");
+        allegro.al_draw_textf(self.font, white, 2 * @intToFloat(f32, self.get_display_width()) / 3, 10, allegro.ALLEGRO_ALIGN_LEFT, scoreTxt);
     }
 
     fn spawn_bullet(self: *Game, bullet: entities.Bullet) bool {
