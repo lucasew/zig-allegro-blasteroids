@@ -14,7 +14,7 @@ pub const sqrt = std.math.sqrt;
 pub const floor = std.math.floor;
 
 pub fn range(len: usize) []const u0 {
-    return @as([*]u0, undefined)[0..len];
+    return comptime @as([*]u0, undefined)[0..len];
 }
 
 pub fn deg2rad(deg: f32) f32 {

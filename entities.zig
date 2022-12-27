@@ -19,13 +19,13 @@ pub const Asteroid = struct {
     pub fn get_radius(self: *Asteroid) f32 {
         return 22 * self.scale;
     }
-    pub fn draw(self: *Bullet) void {
+    pub fn draw(self: *const Asteroid) void {
         var transform: allegro.ALLEGRO_TRANSFORM = undefined;
         allegro.al_identity_transform(&transform);
         allegro.al_rotate_transform(&transform, utils.deg2rad(self.heading));
         allegro.al_translate_transform(&transform, self.position.x, self.position.y);
         allegro.al_use_transform(&transform);
-        const points = .{
+        const points: [12][2]f32 = .{
             .{ -20, 20 },
             .{ -25, 5 },
             .{ -25, -10 },
@@ -39,11 +39,14 @@ pub const Asteroid = struct {
             .{ 10, 20 },
             .{ 0, 15 },
         };
-        const points_len = comptime points.length();
-        inline for (utils.range(points.length() - 1)) |i| {
+        const points_len = 12;
+
+        var i: u8 = 0;
+        while (i < points_len) {
             const i_i = i;
             const i_f = (i + 1) % points_len;
-            allegro.al_draw_line_scaled(points[i_i][0], points[i_i][1], points[i_f][0], points[i_f][1], self.color, 2.0, self.scale);
+            allegro.al_draw_line(points[i_i][0] * self.scale, points[i_i][1] * self.scale, points[i_f][0] * self.scale, points[i_f][1] * self.scale, self.color, 2.0);
+            i += 1;
         }
     }
 };
@@ -62,7 +65,7 @@ pub const Bullet = struct {
     pub fn get_radius(_: *Bullet) f32 {
         return 1;
     }
-    pub fn draw(self: *Bullet) void {
+    pub fn draw(self: *const Bullet) void {
         var transform: allegro.ALLEGRO_TRANSFORM = undefined;
         allegro.al_identity_transform(&transform);
         allegro.al_rotate_transform(&transform, utils.deg2rad(self.heading));

@@ -17,6 +17,8 @@ const get_random_color = utils.get_random_color;
 
 const WindowTitle = "BLASTEROIDS by Lucas59356";
 
+const ENTITY_LIST_SIZE = 256;
+
 var running = true;
 pub fn stop(_: c_int) callconv(.C) void {
     print("stop triggered", .{});
@@ -34,6 +36,8 @@ const Game = struct {
     display: *allegro.ALLEGRO_DISPLAY,
     font: *allegro.ALLEGRO_FONT,
     spaceship: entities.Spaceship,
+    asteroids: [ENTITY_LIST_SIZE]?entities.Asteroid,
+    bullets: [ENTITY_LIST_SIZE]?entities.Bullet,
     timer: Timer,
 
     pub fn new(allocator: *const std.mem.Allocator) *Game {
@@ -69,6 +73,16 @@ const Game = struct {
             .health = 200,
             .color = utils.get_random_color(),
         };
+        // game.asteroids[0] = allocator.create(entities.Asteroid) catch @panic("Game: can't allocate asteroid");
+        game.asteroids[0] = entities.Asteroid{
+            .position = game.spaceship.position,
+            .heading = 32,
+            .speed = 4,
+            .rot_speed = 2,
+            .scale = 2.2,
+            .health = 69,
+            .color = utils.get_random_color(),
+        };
         game.timer = Timer.start() catch @panic("Game: can't start tick_timer");
         return game;
     }
@@ -92,6 +106,18 @@ const Game = struct {
                         allegro.ALLEGRO_KEY_DOWN => entities.Spaceship.go_back(&self.spaceship),
                         allegro.ALLEGRO_KEY_ESCAPE => stop(0),
                         allegro.ALLEGRO_KEY_SPACE => self.handle_shot(),
+                        allegro.ALLEGRO_KEY_COMMA => {
+                            _ = self.spawn_asteroid(entities.Asteroid{
+                                .position = self.spaceship.position,
+                                .heading = self.spaceship.heading,
+                                .speed = 2,
+                                .rot_speed = 1,
+                                .scale = 2,
+                                .health = 1,
+                                .color = utils.get_random_color(),
+                            });
+                            return {};
+                        },
                         else => void{},
                     }
                 },
@@ -105,28 +131,85 @@ const Game = struct {
                 else => void{},
             }
         }
-        // TODO: tick everyone
         const canvas_width = self.get_display_width();
         const canvas_height = self.get_display_height();
         const canvas_width_f = @intToFloat(f32, canvas_width);
         const canvas_height_f = @intToFloat(f32, canvas_height);
-
+        const ticks = @intToFloat(f32, self.timer.lap()) / 10e7;
+        var i: u16 = 0;
+        while (i < ENTITY_LIST_SIZE) {
+            if (self.asteroids[i] != null) {
+                if (!entities.Asteroid.update_position(&self.asteroids[i].?, ticks)) {
+                    self.asteroids[i] = null;
+                } else {
+                    self.asteroids[i].?.position = self.asteroids[i].?.position.intervalify(canvas_width_f, canvas_height_f);
+                }
+            }
+            if (self.bullets[i] != null) {
+                if (!entities.Bullet.update_position(&self.bullets[i].?, ticks)) {
+                    self.bullets[i] = null;
+                } else {
+                    self.bullets[i].?.position = self.bullets[i].?.position.intervalify(canvas_width_f, canvas_height_f);
+                }
+            }
+            i += 1;
+        }
+        // TODO: tick everyone
         self.spaceship.position = self.spaceship.position.intervalify(canvas_width_f, canvas_height_f);
 
         self.draw();
-        const ns_since_last_iter = self.timer.lap();
-        print("tick time: {}ns\n", .{ns_since_last_iter});
+        // print("ticks: {}\n", .{ticks});
     }
 
     fn draw(self: *Game) void {
         allegro.al_flip_display();
         allegro.al_clear_to_color(allegro.al_map_rgb(0, 0, 0));
         self.spaceship.draw();
+        for (self.bullets) |bullet| {
+            if (bullet != null) {
+                entities.Bullet.draw(&bullet.?);
+            }
+        }
+        for (self.asteroids) |asteroid| {
+            if (asteroid != null) {
+                entities.Asteroid.draw(&asteroid.?);
+            }
+        }
+    }
+
+    fn spawn_bullet(self: *Game, bullet: entities.Bullet) bool {
+        var i: u16 = 0;
+        while (i < ENTITY_LIST_SIZE) {
+            if (self.bullets[i] != null) {} else {
+                self.bullets[i] = bullet;
+                return true;
+            }
+            i += 1;
+        }
+        return false;
+    }
+
+    fn spawn_asteroid(self: *Game, asteroid: entities.Asteroid) bool {
+        var i: u16 = 0;
+        while (i < ENTITY_LIST_SIZE) {
+            if (self.asteroids[i] != null) {} else {
+                self.asteroids[i] = asteroid;
+                return true;
+            }
+            i += 1;
+        }
+        return false;
     }
 
     fn handle_shot(self: *Game) void {
-        print("shot: {}\n", .{self});
-        // TODO: implement shot
+        // print("shot: {}\n", .{self});
+        _ = self.spawn_bullet(entities.Bullet{
+            .position = self.spaceship.position,
+            .heading = self.spaceship.heading,
+            .speed = 5,
+            .power = 5,
+            .color = utils.get_random_color(),
+        });
     }
 
     pub fn destroy(self: *Game, allocator: *const std.mem.Allocator) void {
