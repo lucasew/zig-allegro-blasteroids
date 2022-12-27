@@ -60,8 +60,9 @@ const Game = struct {
         allegro.al_set_window_title(game.display, WindowTitle);
         allegro.al_register_event_source(game.queue, allegro.al_get_display_event_source(game.display));
 
-        const font_file = std.os.getenv("ZAB_FONT") orelse return GameInitError.InvalidFontFile;
-        game.font = allegro.al_load_font(font_file, 24, 0) orelse return GameInitError.CantCreateFont;
+        const font_file = std.os.getenvZ("ZAB_FONT") orelse return GameInitError.InvalidFontFile;
+        // defer allocator.free(c_font_file);
+        game.font = allegro.al_load_font(@ptrCast([*c]const u8, font_file), 24, 0) orelse return GameInitError.CantCreateFont;
 
         return game;
     }
@@ -91,6 +92,6 @@ pub fn main() !void {
     _ = allegro.al_init_ttf_addon();
 
     var game = try Game.new(&allocator, 30);
-    defer game.destroy();
+    defer game.destroy(&allocator);
     std.time.sleep(1 * std.time.us_per_s);
 }
