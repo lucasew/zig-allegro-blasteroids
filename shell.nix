@@ -4,5 +4,6 @@ pkgs.mkShell {
     allegro5
     zig
     zls
+    gdb
   ];
 }
