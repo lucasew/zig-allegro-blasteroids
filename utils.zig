@@ -11,6 +11,7 @@ pub var rng = std.rand.DefaultPrng.init(69);
 pub const sin = std.math.sin;
 pub const cos = std.math.cos;
 pub const sqrt = std.math.sqrt;
+pub const floor = std.math.floor;
 
 pub fn range(len: usize) []const u0 {
     return @as([*]u0, undefined)[0..len];
@@ -42,9 +43,15 @@ pub fn get_random_color() allegro.ALLEGRO_COLOR {
 pub const Point = struct {
     x: f32,
     y: f32,
-    fn distance(a: Point, b: Point) f32 {
+    pub fn distance(a: Point, b: Point) f32 {
         const x = a.x - b.x;
         const y = a.y - b.y;
         return sqrt(x * x + y * y);
+    }
+    pub fn intervalify(self: Point, max_x: f32, max_y: f32) Point {
+        return Point{
+            .x = self.x - floor(self.x / max_x) * max_x,
+            .y = self.y - floor(self.y / max_y) * max_y,
+        };
     }
 };

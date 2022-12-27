@@ -30,12 +30,11 @@ pub fn setup_signals() void {
 }
 
 const Game = struct {
-    timer: *allegro.ALLEGRO_TIMER,
     queue: *allegro.ALLEGRO_EVENT_QUEUE,
     display: *allegro.ALLEGRO_DISPLAY,
     font: *allegro.ALLEGRO_FONT,
     spaceship: entities.Spaceship,
-    tick_timer: Timer,
+    timer: Timer,
 
     pub fn new(allocator: *const std.mem.Allocator) *Game {
         print("Creating game object\n", .{});
@@ -70,17 +69,17 @@ const Game = struct {
             .health = 200,
             .color = utils.get_random_color(),
         };
-        game.tick_timer = Timer.start() catch @panic("Game: can't start tick_timer");
+        game.timer = Timer.start() catch @panic("Game: can't start tick_timer");
         return game;
     }
-    fn get_display_width(self: *Game) i32 {
+    pub fn get_display_width(self: *Game) i32 {
         return allegro.al_get_display_width(self.display);
     }
-    fn get_display_height(self: *Game) i32 {
+    pub fn get_display_height(self: *Game) i32 {
         return allegro.al_get_display_height(self.display);
     }
 
-    fn tick(self: *Game) void {
+    pub fn tick(self: *Game) void {
         while (!allegro.al_is_event_queue_empty(self.queue)) {
             var event: allegro.ALLEGRO_EVENT = undefined;
             allegro.al_wait_for_event(self.queue, &event);
@@ -107,8 +106,22 @@ const Game = struct {
             }
         }
         // TODO: tick everyone
-        const ns_since_last_iter = self.tick_timer.lap();
+        const canvas_width = self.get_display_width();
+        const canvas_height = self.get_display_height();
+        const canvas_width_f = @intToFloat(f32, canvas_width);
+        const canvas_height_f = @intToFloat(f32, canvas_height);
+
+        self.spaceship.position = self.spaceship.position.intervalify(canvas_width_f, canvas_height_f);
+
+        self.draw();
+        const ns_since_last_iter = self.timer.lap();
         print("tick time: {}ns\n", .{ns_since_last_iter});
+    }
+
+    fn draw(self: *Game) void {
+        allegro.al_flip_display();
+        allegro.al_clear_to_color(allegro.al_map_rgb(0, 0, 0));
+        self.spaceship.draw();
     }
 
     fn handle_shot(self: *Game) void {
@@ -118,7 +131,6 @@ const Game = struct {
 
     pub fn destroy(self: *Game, allocator: *const std.mem.Allocator) void {
         print("Destroying game object: {}\n", .{self});
-        allegro.al_destroy_timer(self.timer);
         allegro.al_destroy_event_queue(self.queue);
         allegro.al_destroy_display(self.display);
         allegro.al_destroy_font(self.font);
@@ -144,10 +156,10 @@ pub fn main() !void {
 
     var game = Game.new(allocator); // catch @panic("Can't start game");
     print("game: {}\n", .{game});
-    print("timer: {}\n", .{game.tick_timer.lap()});
+    print("timer: {}\n", .{game.timer.lap()});
     std.time.sleep(10 * 1000 * 1000);
     defer Game.destroy(game, allocator);
-    print("timer: {}\n", .{game.tick_timer.lap()});
+    print("timer: {}\n", .{game.timer.lap()});
     setup_signals();
     while (running) {
         game.tick();
