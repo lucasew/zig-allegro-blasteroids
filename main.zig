@@ -26,7 +26,8 @@ pub fn stop(_: c_int) callconv(.C) void {
 }
 
 pub fn setup_signals() void {
-    inline for (.{ os.SIG.TERM, os.SIG.INT }) |sig| {
+    const sigs: [2]u6 = .{ os.SIG.TERM, os.SIG.INT };
+    for (sigs) |sig| {
         os.sigaction(sig, &os.Sigaction{ .handler = .{ .handler = stop }, .mask = os.empty_sigset, .flags = 0 }, null);
     }
 }
