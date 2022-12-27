@@ -10,6 +10,11 @@ pub var rng = std.rand.DefaultPrng.init(69);
 
 pub const sin = std.math.sin;
 pub const cos = std.math.cos;
+pub const sqrt = std.math.sqrt;
+
+pub fn range(len: usize) []const u0 {
+    return @as([*]u0, undefined)[0..len];
+}
 
 pub fn deg2rad(deg: f32) f32 {
     return 0.0174532925 * deg;
@@ -23,15 +28,23 @@ pub fn get_delta_y(speed: f32, degrees: f32) f32 {
     return speed * cos(deg2rad(degrees)) * -1;
 }
 
-pub fn randint(max: i32) i32 {
-    return rng.random().intRangeAtMost(max);
+pub fn randint(comptime t: type, max: t) t {
+    return rng.random().intRangeAtMost(t, 0, max);
 }
 
 pub fn get_random_color() allegro.ALLEGRO_COLOR {
-    return allegro.al_map_rgb(randint(255), randint(255), randint(255));
+    const r = randint(u8, 255);
+    const g = randint(u8, 255);
+    const b = randint(u8, 255);
+    return allegro.al_map_rgb(r, g, b);
 }
 
 pub const Point = struct {
     x: f32,
     y: f32,
+    fn distance(a: Point, b: Point) f32 {
+        const x = a.x - b.x;
+        const y = a.y - b.y;
+        return sqrt(x * x + y * y);
+    }
 };
