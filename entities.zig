@@ -8,7 +8,7 @@ pub const Asteroid = struct {
     speed: f32,
     rot_speed: f32,
     scale: f32,
-    health: i32,
+    health: f32,
     color: allegro.ALLEGRO_COLOR,
     pub fn update_position(self: *Asteroid, ticks: f32) bool {
         self.heading += self.rot_speed * ticks;
@@ -16,7 +16,7 @@ pub const Asteroid = struct {
         self.position.y += utils.get_delta_y(ticks * self.speed, self.heading);
         return self.health > 0;
     }
-    pub fn get_radius(self: *Asteroid) f32 {
+    pub fn get_radius(self: *const Asteroid) f32 {
         return 22 * self.scale;
     }
     pub fn draw(self: *const Asteroid) void {
@@ -55,14 +55,15 @@ pub const Bullet = struct {
     position: utils.Point,
     heading: f32,
     speed: f32,
-    power: i32,
+    power: f32,
     color: allegro.ALLEGRO_COLOR,
     pub fn update_position(self: *Bullet, ticks: f32) bool {
         self.position.x += utils.get_delta_x(ticks * self.speed, self.heading);
         self.position.y += utils.get_delta_y(ticks * self.speed, self.heading);
+        self.power -= ticks;
         return self.power > 0;
     }
-    pub fn get_radius(_: *Bullet) f32 {
+    pub fn get_radius(_: *const Bullet) f32 {
         return 1;
     }
     pub fn draw(self: *const Bullet) void {
@@ -82,7 +83,7 @@ pub const Spaceship = struct {
     position: utils.Point,
     heading: f32,
     speed: f32,
-    health: i32,
+    health: f32,
     color: allegro.ALLEGRO_COLOR,
     heading_step: f32 = 10,
     pub fn turn_left(self: *Spaceship) void {

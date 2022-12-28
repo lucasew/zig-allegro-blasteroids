@@ -21,7 +21,7 @@ const ENTITY_LIST_SIZE = 256;
 
 var running = true;
 pub fn stop(_: c_int) callconv(.C) void {
-    print("stop triggered", .{});
+    print("stop triggered\n", .{});
     running = false;
 }
 
@@ -84,7 +84,7 @@ const Game = struct {
             .speed = 4,
             .rot_speed = 2,
             .scale = 2.2,
-            .health = 69,
+            .health = 200,
             .color = utils.get_random_color(),
         };
         game.timer = Timer.start() catch @panic("Game: can't start tick_timer");
@@ -120,10 +120,10 @@ const Game = struct {
                             _ = self.spawn_asteroid(entities.Asteroid{
                                 .position = self.spaceship.position,
                                 .heading = self.spaceship.heading,
-                                .speed = 2,
+                                .speed = 5,
                                 .rot_speed = 1,
                                 .scale = 2,
-                                .health = 1,
+                                .health = 60,
                                 .color = utils.get_random_color(),
                             });
                             return {};
@@ -146,7 +146,43 @@ const Game = struct {
         const canvas_width_f = @intToFloat(f32, canvas_width);
         const canvas_height_f = @intToFloat(f32, canvas_height);
         const ticks = @intToFloat(f32, self.timer.lap()) / 10e8;
+        // collisons
         var i: u16 = 0;
+        // collisons: bullet-asteroid
+        while (i < ENTITY_LIST_SIZE) {
+            if (self.bullets[i]) |bullet| {
+                var j: u16 = 0;
+                while (j < ENTITY_LIST_SIZE) {
+                    if (self.asteroids[j]) |asteroid| {
+                        const distance = utils.Point.distance(bullet.position, asteroid.position);
+                        const minDistance = bullet.get_radius() + asteroid.get_radius();
+                        if (distance < minDistance) {
+                            print("Collision bullet-asteroid: bid={} aid={} power={}\n", .{ i, j, bullet.power });
+                            self.asteroids[j].?.health -= bullet.power;
+                            self.score += bullet.power;
+                            self.bullets[i].?.power = -1; // destroy bullet
+                        }
+                    }
+                    j += 1;
+                }
+            }
+            // collision: spaceship-asteroid
+            if (self.asteroids[i]) |asteroid| {
+                const distance = utils.Point.distance(asteroid.position, self.spaceship.position);
+                const minDistance = self.spaceship.get_radius() + asteroid.get_radius();
+                if (distance < minDistance) {
+                    print("Collision spaceship-asteroid: aid={} ticks={}\n", .{ i, ticks });
+                    self.spaceship.health -= ticks;
+                    self.asteroids[i].?.health -= ticks;
+                    self.score += ticks * 10;
+                }
+            }
+            i += 1;
+        }
+        // collisions: asteroid-spaceship
+
+        // state updates
+        i = 0;
         while (i < ENTITY_LIST_SIZE) {
             if (self.asteroids[i] != null) {
                 if (!entities.Asteroid.update_position(&self.asteroids[i].?, ticks)) {
@@ -163,6 +199,9 @@ const Game = struct {
                 }
             }
             i += 1;
+        }
+        if (self.spaceship.health < 0) {
+            stop(0);
         }
         self.spaceship.position = self.spaceship.position.intervalify(canvas_width_f, canvas_height_f);
         self.score += ticks;
@@ -193,7 +232,9 @@ const Game = struct {
         allegro.al_identity_transform(&transform);
         allegro.al_use_transform(&transform);
         const white = allegro.al_map_rgb(255, 255, 255);
-        allegro.al_draw_textf(self.font, white, 10, 10, allegro.ALLEGRO_ALIGN_LEFT, "<3 %i", self.spaceship.health);
+        var buf: [32]u8 = undefined;
+        const scoreTxt = std.fmt.bufPrintZ(&buf, "<3 {d:.0}", .{self.spaceship.health}) catch @panic("Game: can't alloc memory for health text");
+        allegro.al_draw_textf(self.font, white, 10, 10, allegro.ALLEGRO_ALIGN_LEFT, scoreTxt);
     }
 
     fn draw_score_text(self: *Game) void {
@@ -235,8 +276,8 @@ const Game = struct {
         _ = self.spawn_bullet(entities.Bullet{
             .position = self.spaceship.position,
             .heading = self.spaceship.heading,
-            .speed = 5,
-            .power = 5,
+            .speed = 20,
+            .power = 50,
             .color = utils.get_random_color(),
         });
     }
