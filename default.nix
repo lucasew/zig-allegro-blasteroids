@@ -28,22 +28,25 @@ pkgs.stdenv.mkDerivation {
   '';
 
   installPhase = ''
-      runHook preInstall
+    runHook preInstall
 
-      mkdir -p $out/bin
+    mkdir -p $out/bin
 
-      install -m755 zblasteroids $out/bin
-      find $out
+    install -m755 zblasteroids $out/bin
+    makeWrapper $out/bin/zblasteroids \
+      --set ZAB_FONT ${./blasteroids_font.ttf}
 
-      runHook postInstall
-    '';
+    find $out
 
-    fixupPhase = ''
-      runHook preFixup
+    runHook postInstall
+  '';
 
-      patchelf $out/bin/*
-      strip $out/bin/*
+  fixupPhase = ''
+    runHook preFixup
 
-      runHook postFixup
-    '';
+    patchelf $out/bin/*
+    strip $out/bin/*
+
+    runHook postFixup
+  '';
 }
